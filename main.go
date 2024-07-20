@@ -4,8 +4,11 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"math"
 	"os"
 	"path/filepath"
+
+	graph "github.com/dominikbraun/graph"
 )
 
 const RedirectTypeTimestamp = "timestamp"
@@ -72,6 +75,10 @@ type Track struct {
 	Title          string         // Title of the track
 	Options        map[string]int // Options of the track
 	End            bool           // Whether the track is the end of the game(there can be more then one end)
+}
+
+func trackHash(t Track) string {
+	return t.ID
 }
 
 type Meta struct {
@@ -241,37 +248,32 @@ func AddTrackToTracksNoOverwrite(tracks []Track, track Track, index int) ([]Trac
 	return newTracks, nil
 }
 
-func SortTracks(tracks []Track, sorter string, lastEnd string) []Track {
-	if sorter == SorterTypeNone {
+func SortTracks(tracks []Track, data CDAdventure) []Track {
+	if data.ConversionManifest.Sorter == SorterTypeNone {
 		return tracks
 	}
-	var sortedTracks []Track = tracks
-	var currentTrack Track
-	for i := 1; i < len(tracks); i++ {
-		currentTrack = tracks[i]
-		if sorter == SorterTypeShortestSkip { // Sort so that every track is as close to the tracks referencing it as possible
-			if currentTrack.ID == lastEnd {
-				sortedTracks[len(sortedTracks)-1] = currentTrack
-				sortedTracks[i] = tracks[len(tracks)-1]
-				continue
-			}
-			for option := range currentTrack.Options {
-				var trackFound, track = GetTrackByID(tracks, option)
-				if !trackFound {
-					continue
-				}
-				var trackSorted, _ = GetTrackByID(sortedTracks, option)
-				if !trackSorted {
-					sortedTracks = append(sortedTracks, track)
-				}
-				var trackIndex = GetIndexOfTrack(sortedTracks, option)
-				if trackIndex > i {
-					sortedTracks, _ = AddTrackToTracksNoOverwrite(sortedTracks, track, i)
-				}
-			}
+	var _, beginning = GetTrackByID(tracks, data.Manifest.Meta.Beginning)
+	tracks, err := AddTrackToTracksNoOverwrite(tracks, beginning, 0)
+	if err != nil {
+		fmt.Println("Error sorting tracks:", err)
+		return tracks
+	}
+	var trackGraph = graph.New(trackHash, graph.Directed(), graph.Weighted(), graph.Rooted())
+	for _, track := range tracks {
+		trackGraph.AddVertex(track)
+	}
+	for i, track := range tracks {
+		for _, option := range track.Options {
+			trackGraph.AddEdge(track.ID, tracks[option].ID, graph.EdgeWeight(int(math.Abs(float64(option-i)))))
 		}
 	}
-	return sortedTracks
+	var output []Track
+	graph.BFS(trackGraph, beginning.ID, func(trackID string) bool {
+		var _, track = GetTrackByID(tracks, trackID)
+		output = append(output, track)
+		return false
+	})
+	return output
 }
 
 func main() {
@@ -346,5 +348,5 @@ func main() {
 		Preamble:           preamble,
 		Manifest:           cdAdventureManifest,
 	}
-	fmt.Println("Assembled CD Adventure:", cdAdventure)
+	fmt.Println(SortTracks(cdAdventure.Manifest.Tracks, cdAdventure))
 }
