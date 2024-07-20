@@ -1,2 +1,4 @@
+github.com/Duckduckgot/gtts v1.3.4 h1:f41xWqKh3NKqkFRGjb2YRr2CCVThQTA51/ajEF3qVks=
+github.com/Duckduckgot/gtts v1.3.4/go.mod h1:/7y/0ZTA26VAvRseANXMJqC5i7611Nd9Ir6dpcTmRNI=
 github.com/dominikbraun/graph v0.23.0 h1:TdZB4pPqCLFxYhdyMFb1TBdFxp8XLcJfTTBQucVPgCo=
 github.com/dominikbraun/graph v0.23.0/go.mod h1:yOjYyogZLY1LSG9E33JWZJiq5k83Qy2C6POAuiViluc=

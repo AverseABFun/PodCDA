@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 
+	gtts "github.com/Duckduckgot/gtts"
 	graph "github.com/dominikbraun/graph"
 )
 
@@ -75,6 +76,15 @@ type Track struct {
 	Title          string         // Title of the track
 	Options        map[string]int // Options of the track
 	End            bool           // Whether the track is the end of the game(there can be more then one end)
+	NoAppend       bool           // Identical to End
+}
+
+type IDTrack struct {
+	ID             string            // ID of the track
+	OriginalSpeech string            // Speech of the track
+	Title          string            // Title of the track
+	Options        map[string]string // Options of the track
+	End            bool              // Whether the track is the end of the game(there can be more then one end)
 }
 
 func trackHash(t Track) string {
@@ -236,6 +246,7 @@ func GetIndexOfTrack(tracks []Track, id string) int {
 func AddTrackToTracksNoOverwrite(tracks []Track, track Track, index int) ([]Track, error) {
 	var found, _ = GetTrackByID(tracks, track.ID)
 	if !found {
+		fmt.Println(track.ID)
 		return tracks, fmt.Errorf("Track not found in tracks")
 	}
 	var indexOfTrack = GetIndexOfTrack(tracks, track.ID)
@@ -248,12 +259,31 @@ func AddTrackToTracksNoOverwrite(tracks []Track, track Track, index int) ([]Trac
 	return newTracks, nil
 }
 
+func CreateIDTrack(track Track, cdAdventure CDAdventure) IDTrack {
+	var idTrack = IDTrack{
+		ID:             track.ID,
+		OriginalSpeech: track.OriginalSpeech,
+		Title:          track.Title,
+		Options:        make(map[string]string),
+		End:            track.End,
+	}
+	for option, optionID := range track.Options {
+		var track = cdAdventure.Manifest.Tracks[optionID]
+		idTrack.Options[option] = track.ID
+	}
+	return idTrack
+}
+
 func SortTracks(tracks []Track, data CDAdventure) []Track {
 	if data.ConversionManifest.Sorter == SorterTypeNone {
 		return tracks
 	}
 	var _, beginning = GetTrackByID(tracks, data.Manifest.Meta.Beginning)
 	tracks, err := AddTrackToTracksNoOverwrite(tracks, beginning, 0)
+	var IDTracks []IDTrack
+	for _, track := range tracks {
+		IDTracks = append(IDTracks, CreateIDTrack(track, data))
+	}
 	if err != nil {
 		fmt.Println("Error sorting tracks:", err)
 		return tracks
@@ -267,13 +297,54 @@ func SortTracks(tracks []Track, data CDAdventure) []Track {
 			trackGraph.AddEdge(track.ID, tracks[option].ID, graph.EdgeWeight(int(math.Abs(float64(option-i)))))
 		}
 	}
-	var output []Track
+	var tempOutput []Track
 	graph.BFS(trackGraph, beginning.ID, func(trackID string) bool {
 		var _, track = GetTrackByID(tracks, trackID)
-		output = append(output, track)
+		tempOutput = append(tempOutput, track)
 		return false
 	})
+	var output []Track = make([]Track, len(tempOutput))
+	for _, track := range IDTracks {
+		for _, option := range track.Options {
+			var i = GetIndexOfTrack(tempOutput, option)
+			if i == -1 {
+				fmt.Println("Error sorting tracks: track not found")
+				return tracks
+			}
+			_, output[i] = GetTrackByID(tracks, option)
+		}
+	}
 	return output
+}
+
+func CreateSpeech(trackID string, speech string) {
+	var speechV = gtts.Speech{Folder: "out/temp", Language: "en", Handler: nil}
+	speechV.CreateSpeechFile(speech, trackID+".mp3")
+}
+
+func GenerateSpeechFromTrack(track Track, conversionManifest ConversionManifest) string {
+	var text = track.OriginalSpeech
+	text += currentOverrides.Speech_options_separator
+	text += currentOverrides.Options_prefix
+	var i = 0
+	for option, _ := range track.Options {
+		if i != 0 && i != len(track.Options)-1 {
+			text += currentOverrides.Options_item_separator
+		} else if i == len(track.Options)-1 {
+			text += currentOverrides.Last_options_item_separator
+		}
+		text += option
+		i += 1
+	}
+	text += ". "
+	for option, _ := range track.Options {
+		text += currentOverrides.Options_seconds_prefix
+		text += option
+		if conversionManifest.RedirectType == RedirectTypeTimestamp {
+			text += currentOverrides.Options_timestamp_go_to
+		} else if conversionManifest.RedirectType == RedirectTypeSkip {
+		}
+	}
 }
 
 func main() {
@@ -348,5 +419,11 @@ func main() {
 		Preamble:           preamble,
 		Manifest:           cdAdventureManifest,
 	}
-	fmt.Println(SortTracks(cdAdventure.Manifest.Tracks, cdAdventure))
+	for _, track := range cdAdventure.Manifest.Tracks {
+		if track.NoAppend {
+			track.End = true
+		}
+	}
+	cdAdventure.Manifest.Tracks = SortTracks(cdAdventure.Manifest.Tracks, cdAdventure)
+	fmt.Println(cdAdventure.Manifest.Tracks)
 }
