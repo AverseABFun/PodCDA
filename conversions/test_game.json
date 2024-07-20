@@ -1,0 +1,23 @@
+{
+    "version": 1,
+    "path": "../CDAdventure/out/test_game/manifest.json",
+    "outputPath": "../out/test_game.mp3",
+    "preamble": "preambles/test_game.json",
+    "overrides": {
+        "options_prefix": "You can ",
+        "options_item_separator": ", ",
+        "last_options_item_separator": ", or ",
+        "speech_options_separator": " ... ... ... ",
+        "options_seconds_prefix": "To ",
+        "options_seconds_forward_prefix": ", skip forward ",
+        "options_seconds_backward_prefix": ", skip backward ",
+        "options_timestamp_go_to": ", go to timestamp ",
+        "options_timestamp_go_to_suffix": ". ",
+        "options_seconds_suffix_plural": " seconds. ",
+        "options_seconds_suffix_singular": " seconds. ",
+        "request_to_pause": "Please pause and make your decision now. "
+    },
+    "lastEnd": "something_else",
+    "redirectType": "timestamp",
+    "sorter": "shortest_skip"
+}

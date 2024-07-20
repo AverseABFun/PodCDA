@@ -1,0 +1,7 @@
+{
+    "version": 1,
+    "uses_file": false,
+    "speech": "This is a test game, to test the PodCDA compiler. Ready, set, go!",
+    "post_speech": "That's the end of the test game. Thanks for playing!",
+    "starting_speech_delay": 5
+}
