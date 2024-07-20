@@ -1,0 +1,3 @@
+[submodule "CDAdventure"]
+	path = CDAdventure
+	url = https://github.com/AverseABFun/CDAdventure
